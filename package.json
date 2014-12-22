@@ -1,0 +1,19 @@
+{
+  "name": "Queuebe-server",
+  "version": "1.0.0",
+  "description": "A Queuebe server",
+  "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Queuebe/Queuebe-server.git"
+  },
+  "keywords": [
+    "queuebe"
+  ],
+  "author": "Tom Smeding",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Queuebe/Queuebe-server/issues"
+  },
+  "homepage": "https://github.com/Queuebe/Queuebe-server"
+}
