@@ -58,7 +58,7 @@ var server=net.createServer(function(conn){
 				} else if(line.match(/^join_lobby /)){
 					var choice=+line.slice(11),chosenLobby;
 					if(isNaN(choice)||choice<0||choice%1!=0||(chosenLobby=lobbyIndex(choice),(chosenLobby==-1||chosenLobby==currentLobby))){
-						if(chosenLobby==currentLobby)conn.write("error Already in that lobby\n");
+						if(chosenLobby==currentLobby&&currentLobby!=-1)conn.write("error Already in that lobby\n");
 						else conn.write("error Invalid lobby\n");
 						continue;
 					}
@@ -70,6 +70,10 @@ var server=net.createServer(function(conn){
 								continue;
 							}
 							lobbies.splice(idx,1);
+							broadcast("list_lobbies "+lobbies.length+"\n");
+							lobbies.forEach(function(lob){
+								broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+							});
 						}
 					}
 					currentLobby=chosenLobby;
@@ -84,7 +88,12 @@ var server=net.createServer(function(conn){
 						continue;
 					}
 					lobbies.splice(idx,1);
+					currentLobby=-1;
 					conn.write("leave_lobby_ok\n");
+					broadcast("list_lobbies "+lobbies.length+"\n");
+					lobbies.forEach(function(lob){
+						broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+					});
 				} else if(line.match(/^create_lobby /)){
 					var lname=line.slice(13);
 					if(lobbies.filter(function(l){return l.name==lname;}).length!=0){
@@ -103,6 +112,10 @@ var server=net.createServer(function(conn){
 								continue;
 							}
 							lobbies.splice(idx,1);
+							broadcast("list_lobbies "+lobbies.length+"\n");
+							lobbies.forEach(function(lob){
+								broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+							});
 						}
 					}
 					currentLobby=uniqid();
