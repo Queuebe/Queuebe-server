@@ -182,8 +182,6 @@ var adjacencyMatrix=[[2,6,4,5],[3,6,1,5],[4,6,2,5],[6,1,3,5],[4,3,2,1],[2,3,4,1]
 	oppositeFace=[3,4,1,2,6,5];
 
 function getCubeFace(cube,side,rot){
-	console.log(cube);
-	console.log(side);
 	var face=cube[side-1].join("");
 	return face.slice(rot%4)+face.slice(0,rot%4);
 }
@@ -216,18 +214,16 @@ function startGame(lobbyIdx){
 					}
 
 					cubeface=conni==1?oppositeFace[lob.game.player0at-1]:lob.game.player0at;
-					console.log("cubeface=");
-					console.log(cubeface);
-					lob.game.cube[cubeface-1][(click+lob.rot)%4]=1-lob.game.cube[cubeface-1][(click+lob.rot)%4];
+					lob.game.cube[cubeface-1][(click+lob.game.rot)%4]=1-lob.game.cube[cubeface-1][(click+lob.game.rot)%4];
 					console.log(lob.game.cube);
-					newface=adjacencyMatrix[cubeface-1][(click+lob.rot)%4];
-					lob.rot=(lob.rot+rotatingFromToGivesRelRot[cubeface-1][newface-1])%4;
+					newface=adjacencyMatrix[cubeface-1][(click+lob.game.rot)%4];
+					lob.game.rot=(lob.game.rot+rotatingFromToGivesRelRot[cubeface-1][newface-1])%4;
 					lob.game.player0at=conni==1?oppositeFace[newface-1]:newface;
 
 					lob.game.toMove=1-lob.game.toMove;
 
-					conn[0].write("your_cube_face "+getCubeFace(lob.game.cube,lob.game.player0at,lob.rot)+"\n");
-					conn[1].write("your_cube_face "+getCubeFace(lob.game.cube,oppositeFace[lob.game.player0at-1],lob.rot)+"\n");
+					conn[0].write("your_cube_face "+getCubeFace(lob.game.cube,lob.game.player0at,lob.game.rot)+"\n");
+					conn[1].write("your_cube_face "+getCubeFace(lob.game.cube,oppositeFace[lob.game.player0at-1],lob.game.rot)+"\n");
 				} else {
 					conn[conni].write("error Invalid command sent ("+(line.length<=10?"":"starting with ")+"\""+line.slice(0,10)+"\")\n");
 				}
@@ -251,6 +247,6 @@ function startGame(lobbyIdx){
 		toMove:0,player0at:1,rot:0
 	};
 	//player0at=side that player 0 sees; rot=number of 90-degrees-multiples rotated from standard orientation
-	conn[0].write("your_cube_face "+getCubeFace(lob.game.cube,lob.game.player0at,lob.rot)+"\n");
-	conn[1].write("your_cube_face "+getCubeFace(lob.game.cube,oppositeFace[lob.game.player0at-1],lob.rot)+"\n");
+	conn[0].write("your_cube_face "+getCubeFace(lob.game.cube,lob.game.player0at,lob.game.rot)+"\n");
+	conn[1].write("your_cube_face "+getCubeFace(lob.game.cube,oppositeFace[lob.game.player0at-1],lob.game.rot)+"\n");
 }
