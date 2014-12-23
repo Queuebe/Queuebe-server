@@ -50,6 +50,11 @@ var server=net.createServer(function(conn){
 					lobbies.forEach(function(lob){
 						conn.write("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
 					});
+				} else if(line=="list_players"){
+					conn.write("list_players "+client_nicknames.length+"\n");
+					client_nicknames.forEach(function(nn){
+						conn.write("player "+nn+"\n");
+					});
 				} else if(line.match(/^join_lobby /)){
 					var choice=+line.slice(11),chosenLobby;
 					if(isNaN(choice)||choice<0||choice%1!=0||(chosenLobby=lobbyIndex(choice),(chosenLobby==-1||chosenLobby==currentLobby))){
