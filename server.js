@@ -8,139 +8,177 @@ var server=net.createServer(function(conn){
 	var currentLobby=-1,nickname=null,running=false; //persistent
 	var onEndFunction;
 	conn.on("data",(function(){
-		var databuffer="",wasInGame=false; //persistent
+		var databuffer="",isInGame=false; //persistent
 		return function(data){
 			var line,idx;
 			idx=lobbyIndex(currentLobby);
-			if(currentLobby!=-1&&idx!=-1&&lobbies[idx].players.length==2){
-				wasInGame=true;
-				return; //the other listener will take over
-			}
-			if(wasInGame){
-				currentLobby=-1;
-				wasInGame=false;
-			}
 			databuffer+=data;
 			while(databuffer.length&&(idx=databuffer.indexOf("\n"))!=-1){
 				line=databuffer.slice(0,idx);
 				databuffer=databuffer.slice(idx+1);
-				if(line.match(/^nick /)&&nickname==undefined){
-					nickname=line.slice(5);
-					if(client_nicknames.indexOf(nickname)!=-1){
-						conn.write("error Nickname is already taken\n");
-						nickname=null;
-						continue;
-					}
-					if(nickname.length==0){
-						conn.write("error Invalid nickname\n");
-						nickname=null;
-						continue;
-					}
-					client_nicknames.push(nickname);
-					client_sockets.push(conn);
-					conn.write("nick_ok\n");
-					continue;
-				}
-				if(nickname==undefined){
-					conn.write("error Can only send a \"nick\" line while no nickname set\n");
-					continue;
-				}
-				if(line=="list_lobbies"){
-					conn.write("list_lobbies "+lobbies.length+"\n");
-					lobbies.forEach(function(lob){
-						conn.write("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
-					});
-				} else if(line=="list_players"){
-					conn.write("list_players "+client_nicknames.length+"\n");
-					client_nicknames.forEach(function(nn){
-						conn.write("player "+nn+"\n");
-					});
-				} else if(line.match(/^join_lobby /)){
-					var choice=+line.slice(11),chosenLobby;
-					if(isNaN(choice)||choice<0||choice%1!=0||(chosenLobby=lobbyIndex(choice),(chosenLobby==-1||chosenLobby==currentLobby))){
-						if(chosenLobby==currentLobby&&currentLobby!=-1)conn.write("error Already in that lobby\n");
-						else conn.write("error Invalid lobby\n");
-						continue;
-					}
-					if(currentLobby!=-1){
-						idx=lobbyIndex(currentLobby);
-						if(idx!=-1){
-							if(lobbies[idx].running){
-								conn.write("error Cannot join a lobby while still playing one\n");
-								continue;
-							}
-							lobbies.splice(idx,1);
-							broadcast("list_lobbies "+lobbies.length+"\n");
-							lobbies.forEach(function(lob){
-								broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
-							});
-						}
-					}
-					currentLobby=chosenLobby;
-					lobbies[currentLobby].players.push([nickname,conn]);
-					startGame(currentLobby,databuffer);
-					wasInGame=true;
-				} else if(line=="leave_lobby"){
-					idx=lobbyIndex(currentLobby);
-					if(currentLobby==-1||idx==-1){
-						conn.write("error Not currently in a lobby, so can't leave\n");
-						currentLobby=-1;
-						continue;
-					}
-					lobbies.splice(idx,1);
-					currentLobby=-1;
-					conn.write("leave_lobby_ok\n");
-					broadcast("list_lobbies "+lobbies.length+"\n");
-					lobbies.forEach(function(lob){
-						broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
-					});
-				} else if(line.match(/^create_lobby /)){
-					var lname=line.slice(13);
-					if(lobbies.filter(function(l){return l.name==lname;}).length!=0){
-						conn.write("error A lobby already exists with that name\n");
-						continue;
-					}
-					if(lname.length==0){
-						conn.write("error Invalid lobby name\n");
-						continue;
-					}
-					if(currentLobby!=-1){
-						idx=lobbyIndex(currentLobby);
-						if(idx!=-1){
-							if(lobbies[idx].running){
-								conn.write("error Cannot create a lobby while still playing one\n");
-								continue;
-							}
-							lobbies.splice(idx,1);
-							broadcast("list_lobbies "+lobbies.length+"\n");
-							lobbies.forEach(function(lob){
-								broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
-							});
-						}
-					}
-					currentLobby=uniqid();
-					lobbies.push({id:currentLobby,name:lname,players:[[nickname,conn]]});
-					conn.write("create_lobby_ok\n");
 
-					broadcast("list_lobbies "+lobbies.length+"\n");
-					lobbies.forEach(function(lob){
-						broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
-					});
-				} else if(line=="my_lobby"){
-					idx=lobbyIndex(currentLobby);
-					if(idx==-1)currentLobby=-1;
-					if(currentLobby==-1)conn.write("my_lobby\n");
-					else conn.write("my_lobby "+currentLobby+" "+lobbies[idx].name+"\n");
-				} else if(line.match(/^lobby_info /)){
-					var which=+line.slice(11),whichLobby;
-					if(isNaN(which)||which<0||which%1!=0||(whichLobby=lobbyIndex(which))==-1){
-						conn.write("error Invalid lobby\n");
+
+				if(!isInGame){
+
+
+					if(line.match(/^nick /)&&nickname==undefined){
+						nickname=line.slice(5);
+						if(client_nicknames.indexOf(nickname)!=-1){
+							conn.write("error Nickname is already taken\n");
+							nickname=null;
+							continue;
+						}
+						if(nickname.length==0){
+							conn.write("error Invalid nickname\n");
+							nickname=null;
+							continue;
+						}
+						client_nicknames.push(nickname);
+						client_sockets.push(conn);
+						conn.write("nick_ok\n");
 						continue;
 					}
-					conn.write("lobby_info "+which+" "+lobbies[whichLobby].players.length+"\n");
-					lobbies[whichLobby].players.forEach(function(pl){conn.write("player "+which+" "+pl[0]+"\n");});
+					if(nickname==undefined){
+						conn.write("error Can only send a \"nick\" line while no nickname set\n");
+						continue;
+					}
+					if(line=="cl"){
+						conn.write("current_lobby "+currentLobby+"\n");
+					}
+					if(line=="list_lobbies"){
+						conn.write("list_lobbies "+lobbies.length+"\n");
+						lobbies.forEach(function(lob){
+							conn.write("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+						});
+					} else if(line=="list_players"){
+						conn.write("list_players "+client_nicknames.length+"\n");
+						client_nicknames.forEach(function(nn){
+							conn.write("player "+nn+"\n");
+						});
+					} else if(line.match(/^join_lobby /)){
+						var choice=+line.slice(11),chosenLobby;
+						if(isNaN(choice)||choice<0||choice%1!=0||(chosenLobby=lobbyIndex(choice),(chosenLobby==-1||chosenLobby==currentLobby))){
+							if(chosenLobby==currentLobby&&currentLobby!=-1)conn.write("error Already in that lobby\n");
+							else conn.write("error Invalid lobby\n");
+							continue;
+						}
+						if(currentLobby!=-1){
+							idx=lobbyIndex(currentLobby);
+							if(idx!=-1){
+								if(lobbies[idx].running){
+									conn.write("error Cannot join a lobby while still playing one\n");
+									continue;
+								}
+								lobbies.splice(idx,1);
+								broadcast("list_lobbies "+lobbies.length+"\n");
+								lobbies.forEach(function(lob){
+									broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+								});
+							}
+						}
+						currentLobby=chosenLobby;
+						lobbies[currentLobby].players.push([nickname,conn]);
+						startGame(currentLobby,databuffer);
+						isInGame=true;
+					} else if(line=="leave_lobby"){
+						idx=lobbyIndex(currentLobby);
+						if(currentLobby==-1||idx==-1){
+							conn.write("error Not currently in a lobby, so can't leave\n");
+							currentLobby=-1;
+							continue;
+						}
+						lobbies.splice(idx,1);
+						currentLobby=-1;
+						conn.write("leave_lobby_ok\n");
+						broadcast("list_lobbies "+lobbies.length+"\n");
+						lobbies.forEach(function(lob){
+							broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+						});
+					} else if(line.match(/^create_lobby /)){
+						var lname=line.slice(13);
+						if(lobbies.filter(function(l){return l.name==lname;}).length!=0){
+							conn.write("error A lobby already exists with that name\n");
+							continue;
+						}
+						if(lname.length==0){
+							conn.write("error Invalid lobby name\n");
+							continue;
+						}
+						if(currentLobby!=-1){
+							idx=lobbyIndex(currentLobby);
+							if(idx!=-1){
+								if(lobbies[idx].running){
+									conn.write("error Cannot create a lobby while still playing one\n");
+									continue;
+								}
+								lobbies.splice(idx,1);
+								broadcast("list_lobbies "+lobbies.length+"\n");
+								lobbies.forEach(function(lob){
+									broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+								});
+							}
+						}
+						currentLobby=uniqid();
+						lobbies.push({id:currentLobby,name:lname,players:[[nickname,conn]]});
+						conn.write("create_lobby_ok\n");
+
+						broadcast("list_lobbies "+lobbies.length+"\n");
+						lobbies.forEach(function(lob){
+							broadcast("lobby "+lob.id+" "+lob.players.length+" "+lob.name+"\n");
+						});
+					} else if(line=="my_lobby"){
+						idx=lobbyIndex(currentLobby);
+						if(idx==-1)currentLobby=-1;
+						if(currentLobby==-1)conn.write("my_lobby\n");
+						else conn.write("my_lobby "+currentLobby+" "+lobbies[idx].name+"\n");
+					} else if(line.match(/^lobby_info /)){
+						var which=+line.slice(11),whichLobby;
+						if(isNaN(which)||which<0||which%1!=0||(whichLobby=lobbyIndex(which))==-1){
+							conn.write("error Invalid lobby\n");
+							continue;
+						}
+						conn.write("lobby_info "+which+" "+lobbies[whichLobby].players.length+"\n");
+						lobbies[whichLobby].players.forEach(function(pl){conn.write("player "+which+" "+pl[0]+"\n");});
+					} else {
+						conn.write("error Invalid command sent ("+(line.length<=10?"":"starting with ")+"\""+line.slice(0,10)+"\")\n");
+					}
+
+
 				} else {
-					conn.write("error Invalid command sent ("+(line.length<=10?"":"starting with ")+"\""+line.slice(0,10)+"\")\n");
+
+
+					if(line=="quit_game"){
+						conn[1-conni].write("other_player_quit_game\n");
+						lobbies.splice(lobbyIdx,1);
+						conn[0].removeListener("data",conn0listenerfunction);
+						conn[1].removeListener("data",conn1listenerfunction);
+					} else if(line.match(/^click /)){
+						var click=+line.slice(6),cubeface,newface;
+						if(lob.game.toMove!=conni){
+							conn[conni].write("error Not your turn\n");
+							continue;
+						}
+						if(isNaN(click)||click<0||click>3||click%1!=0){
+							conn[conni].write("error Invalid move\n");
+							continue;
+						}
+
+						cubeface=conni==1?oppositeFace[lob.game.player0at-1]:lob.game.player0at;
+						lob.game.cube[cubeface-1][(click+lob.game.rot)%4]=1-lob.game.cube[cubeface-1][(click+lob.game.rot)%4];
+						console.log(lob.game.cube);
+						newface=adjacencyMatrix[cubeface-1][(click+lob.game.rot)%4];
+						lob.game.rot=(lob.game.rot+rotatingFromToGivesRelRot[cubeface-1][newface-1])%4;
+						lob.game.player0at=conni==1?oppositeFace[newface-1]:newface;
+
+						lob.game.toMove=1-lob.game.toMove;
+
+						conn[0].write("your_cube_face "+getCubeFace(lob.game.cube,lob.game.player0at,lob.game.rot)+"\n");
+						conn[1].write("your_cube_face "+getCubeFace(lob.game.cube,oppositeFace[lob.game.player0at-1],lob.game.rot)+"\n");
+					} else {
+						conn[conni].write("error Invalid command sent ("+(line.length<=10?"":"starting with ")+"\""+line.slice(0,10)+"\")\n");
+					}
+
+
 				}
 			}
 		};
@@ -201,53 +239,6 @@ function getCubeFace(cube,side,rot){
 
 function startGame(lobbyIdx){
 	var lob=lobbies[lobbyIdx],conn=[lob.players[0][1],lob.players[1][1]]; //lob is a reference
-	var conn0listenerfunction,conn1listenerfunction;
-	var connectionGameDataListenerFactory=function(conni){
-		return function(data){
-			var databuffer=""; //persistent
-			var line,idx;
-			databuffer+=data;
-			while(databuffer.length&&(idx=databuffer.indexOf("\n"))){
-				line=databuffer.slice(0,idx);
-				databuffer=databuffer.slice(idx+1);
-				if(line=="quit_game"){
-					conn[1-conni].write("other_player_quit_game\n");
-					lobbies.splice(lobbyIdx,1);
-					conn[0].removeListener("data",conn0listenerfunction);
-					conn[1].removeListener("data",conn1listenerfunction);
-				} else if(line.match(/^click /)){
-					var click=+line.slice(6),cubeface,newface;
-					if(lob.game.toMove!=conni){
-						conn[conni].write("error Not your turn\n");
-						continue;
-					}
-					if(isNaN(click)||click<0||click>3||click%1!=0){
-						conn[conni].write("error Invalid move\n");
-						continue;
-					}
-
-					cubeface=conni==1?oppositeFace[lob.game.player0at-1]:lob.game.player0at;
-					lob.game.cube[cubeface-1][(click+lob.game.rot)%4]=1-lob.game.cube[cubeface-1][(click+lob.game.rot)%4];
-					console.log(lob.game.cube);
-					newface=adjacencyMatrix[cubeface-1][(click+lob.game.rot)%4];
-					lob.game.rot=(lob.game.rot+rotatingFromToGivesRelRot[cubeface-1][newface-1])%4;
-					lob.game.player0at=conni==1?oppositeFace[newface-1]:newface;
-
-					lob.game.toMove=1-lob.game.toMove;
-
-					conn[0].write("your_cube_face "+getCubeFace(lob.game.cube,lob.game.player0at,lob.game.rot)+"\n");
-					conn[1].write("your_cube_face "+getCubeFace(lob.game.cube,oppositeFace[lob.game.player0at-1],lob.game.rot)+"\n");
-				} else {
-					conn[conni].write("error Invalid command sent ("+(line.length<=10?"":"starting with ")+"\""+line.slice(0,10)+"\")\n");
-				}
-			}
-		};
-	};
-
-	conn0listenerfunction=connectionGameDataListenerFactory(0);
-	conn[0].on("data",conn0listenerfunction);
-	conn1listenerfunction=connectionGameDataListenerFactory(1);
-	conn[1].on("data",conn1listenerfunction);
 
 	conn[0].write("game_start "+lob.players[1][0]+"\n");
 	conn[1].write("game_start_wait "+lob.players[0][0]+"\n");
