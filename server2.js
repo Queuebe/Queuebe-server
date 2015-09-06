@@ -40,6 +40,7 @@ var server=net.createServer(function(conn){
 			process.exit();
 		} else {
 			players.splice(plidx,1);
+			console.log("plidx "+plidx+" disconnected");
 		}
 	});
 	conn.on("end",function(){
@@ -48,6 +49,7 @@ var server=net.createServer(function(conn){
 			process.exit();
 		} else {
 			players.splice(plidx,1);
+			console.log("plidx "+plidx+" disconnected");
 		}
 	});
 });
@@ -76,7 +78,7 @@ function ondata(conn,line,plidx){
 	} else {
 
 		if((match=line.match(/^click (\d)$/))){
-			var cubeface,newface;
+			var cubeface,newface,rotaction;
 			if(plidx!=gstate.toMove){
 				conn.write("error Not your turn\n");
 				return;
@@ -98,6 +100,9 @@ function ondata(conn,line,plidx){
 			gstate.rot=(gstate.rot+rotatingFromToGivesRelRot[gstate.player0at][newface])%4;
 			gstate.player0at=newface;
 
+			if(plidx==0)rotaction=[arg,rotForP2[arg]];
+			else rotaction=[rotForP2[arg],arg];
+
 			gstate.toMove=1-gstate.toMove;
 
 			console.log(gstate.cube);
@@ -105,6 +110,10 @@ function ondata(conn,line,plidx){
 
 			players[0].conn.write("update_cube_face "+getCubeFace(gstate.cube,gstate.player0at,gstate.rot)+" "+arg+" "+numInCube(gstate.cube,0)+" "+numInCube(gstate.cube,1)+"\n");
 			players[1].conn.write("update_cube_face "+getCubeFace(gstate.cube,oppositeFace[gstate.player0at],rotForP2[gstate.rot])+" "+arg+" "+numInCube(gstate.cube,0)+" "+numInCube(gstate.cube,1)+"\n");
+			if(numInCube(gstate.cube,0)==0||numInCube(gstate.cube,1)==0){
+				broadcast("quit\n");
+				process.exit();
+			}
 			players[gstate.toMove].conn.write("your_turn\n");
 		} else {
 			conn.write("error Invalid command\n");
@@ -121,7 +130,7 @@ function broadcast(msg,except){
 	});
 }
 
-var adjacencyMatrix=[[1,5,3,4],[2,5,0,4],[3,5,1,4],[5,0,2,4],[3,2,1,0],[1,2,3,0]],
+var adjacencyMatrix=[[1,5,3,4],[2,5,0,4],[3,5,1,4],[0,5,2,4],[3,2,1,0],[1,2,3,0]],
 	rotatingFromToGivesRelRot=[[NaN,0,NaN,0,2,0],[0,NaN,0,NaN,1,1],[NaN,0,NaN,0,0,2],[0,NaN,0,NaN,3,3],[2,3,0,1,NaN,NaN],[0,3,2,1,NaN,NaN]],
 	oppositeFace=[2,3,0,1,5,4],
 	rotForP2=[0,3,2,1];

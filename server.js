@@ -228,7 +228,7 @@ function broadcast(text){
 }
 
 
-var adjacencyMatrix=[[2,6,4,5],[3,6,1,5],[4,6,2,5],[6,1,3,5],[4,3,2,1],[2,3,4,1]],
+var adjacencyMatrix=[[2,6,4,5],[3,6,1,5],[4,6,2,5],[1,6,3,5],[4,3,2,1],[2,3,4,1]],
 	rotatingFromToGivesRelRot=[[NaN,0,NaN,0,2,0],[0,NaN,0,NaN,1,1],[NaN,0,NaN,0,0,2],[0,NaN,0,NaN,3,3],[2,3,0,1,NaN,NaN],[0,3,2,1,NaN,NaN]],
 	oppositeFace=[3,4,1,2,6,5];
 
