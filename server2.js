@@ -78,7 +78,7 @@ function ondata(conn,line,plidx){
 	} else {
 
 		if((match=line.match(/^click (\d)$/))){
-			var cubeface,newface,rotaction;
+			var cubeface,newface;
 			if(plidx!=gstate.toMove){
 				conn.write("error Not your turn\n");
 				return;
@@ -99,9 +99,6 @@ function ondata(conn,line,plidx){
 			newface=adjacencyMatrix[gstate.player0at][(arg+gstate.rot)%4];
 			gstate.rot=(gstate.rot+rotatingFromToGivesRelRot[gstate.player0at][newface])%4;
 			gstate.player0at=newface;
-
-			if(plidx==0)rotaction=[arg,rotForP2[arg]];
-			else rotaction=[rotForP2[arg],arg];
 
 			gstate.toMove=1-gstate.toMove;
 
